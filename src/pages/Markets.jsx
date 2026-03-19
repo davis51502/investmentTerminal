@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import MarketCard from '../components/MarketCard.jsx'
+import TickerDetailPanel from '../components/TickerDetailPanel.jsx'
 import watchlist from '../data/watchlist.js'
 import useRealtimePrices from '../lib/useRealtimePrices.js'
 
 function MarketsGrid({ symbols, selectedSymbol }) {
   const { list, usingLiveData } = useRealtimePrices(symbols)
+  const [activeSymbol, setActiveSymbol] = useState(selectedSymbol || null)
 
   return (
     <>
@@ -23,14 +25,16 @@ function MarketsGrid({ symbols, selectedSymbol }) {
           <MarketCard
             key={symbol}
             symbol={symbol}
-            name={symbol}
+            name={name}
             price={price}
             change={change}
             percent={percent}
             series={series}
+            onOpen={setActiveSymbol}
           />
         ))}
       </div>
+      {activeSymbol && <TickerDetailPanel symbol={activeSymbol} onClose={() => setActiveSymbol(null)} />}
     </>
   )
 }

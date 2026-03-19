@@ -100,6 +100,18 @@ class MarketHandler(BaseHTTPRequestHandler):
                 self._send_json(502, {"error": "Unable to search Yahoo Finance symbols", "detail": str(exc)})
             return
 
+        if route == "/api/market/details":
+            symbol = (params.get("symbol", [""])[0] or "").strip().upper()
+            if not symbol:
+                self._send_json(400, {"error": "Symbol is required"})
+                return
+
+            try:
+                self._send_json(200, {"data": fetch_ticker_details(symbol)})
+            except Exception as exc:  # pragma: no cover
+                self._send_json(502, {"error": "Unable to fetch Yahoo Finance ticker details", "detail": str(exc)})
+            return
+
         self._send_json(404, {"error": "Not found"})
 
     def log_message(self, _format: str, *_args: object) -> None:
@@ -174,6 +186,54 @@ def search_symbols(query: str) -> list[dict]:
         )
 
     return results
+
+
+def fetch_ticker_details(symbol: str) -> dict:
+    ticker = yf.Ticker(symbol)
+    info = ticker.fast_info or {}
+    meta = ticker.info or {}
+    history = ticker.history(period="1mo", interval="1d")
+    news_items = getattr(ticker, "news", []) or []
+
+    price = _number(info.get("lastPrice")) or _number(meta.get("currentPrice")) or _number(meta.get("regularMarketPrice")) or 0.0
+    previous_close = _number(info.get("previousClose")) or _number(meta.get("previousClose")) or price or 0.0
+    change = price - previous_close
+    percent = (change / previous_close * 100) if previous_close else 0.0
+
+    history_points = [
+        {
+            "date": index.strftime("%Y-%m-%d"),
+            "close": _number(row.get("Close")) or 0.0,
+        }
+        for index, row in history.iterrows()
+    ]
+
+    normalized_news = []
+    for item in news_items[:8]:
+        content = item.get("content") or {}
+        normalized_news.append(
+            {
+                "title": content.get("title") or item.get("title") or "Untitled story",
+                "publisher": content.get("provider", {}).get("displayName") or item.get("publisher") or "Yahoo Finance",
+                "summary": content.get("summary") or content.get("description") or "",
+                "url": content.get("canonicalUrl", {}).get("url") or item.get("link") or item.get("url") or "",
+                "publishedAt": content.get("pubDate") or item.get("providerPublishTime") or "",
+            }
+        )
+
+    return {
+        "symbol": symbol,
+        "name": meta.get("shortName") or meta.get("longName") or symbol,
+        "exchange": meta.get("exchange") or meta.get("fullExchangeName"),
+        "price": price,
+        "previousClose": previous_close,
+        "change": change,
+        "percent": percent,
+        "currency": meta.get("currency") or "USD",
+        "sector": meta.get("sectorDisp") or meta.get("sector") or "",
+        "history": history_points,
+        "news": normalized_news,
+    }
 
 
 def _number(value: object) -> float | None:
