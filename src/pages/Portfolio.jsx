@@ -1,18 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import TickerDetailPanel from '../components/TickerDetailPanel.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { loadPortfolioSymbols, savePortfolioSymbols } from '../lib/portfolioStorage.js'
+import usePortfolioSymbols from '../lib/usePortfolioSymbols.js'
 import useRealtimePrices from '../lib/useRealtimePrices.js'
 
 function PortfolioWorkspace({ user, profile }) {
-  const [symbols, setSymbols] = useState(() => loadPortfolioSymbols(user.id))
+  const [symbols, setSymbols] = usePortfolioSymbols(user.id)
   const [draftSymbol, setDraftSymbol] = useState('')
   const [activeSymbol, setActiveSymbol] = useState(null)
-
-  useEffect(() => {
-    savePortfolioSymbols(user.id, symbols)
-  }, [symbols, user.id])
 
   const normalizedSymbols = useMemo(() => symbols.map((symbol) => symbol.toUpperCase()), [symbols])
   const { list, usingLiveData } = useRealtimePrices(normalizedSymbols)

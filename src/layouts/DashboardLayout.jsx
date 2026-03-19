@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import Header from '../components/Header.jsx'
 import CommandPalette from '../components/CommandPalette.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import watchlist from '../data/watchlist.js'
+import usePortfolioSymbols from '../lib/usePortfolioSymbols.js'
 import useRealtimePrices from '../lib/useRealtimePrices.js'
 
 function SidebarWatchlist() {
-  const { data } = useRealtimePrices(watchlist)
+  const { user } = useAuth()
+  const [portfolioSymbols] = usePortfolioSymbols(user?.id || '')
+  const symbols = portfolioSymbols.length ? portfolioSymbols : watchlist
+  const { data } = useRealtimePrices(symbols)
 
   return (
     <aside className="hidden lg:block w-72 shrink-0 px-3 py-4">
@@ -15,7 +20,7 @@ function SidebarWatchlist() {
           <span className="text-[10px] text-slate-400">Realtime</span>
         </div>
         <ul className="space-y-1">
-          {watchlist.map((sym) => {
+          {symbols.map((sym) => {
             const item = data[sym]
             const isUp = (item?.change ?? 0) >= 0
             return (

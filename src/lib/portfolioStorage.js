@@ -1,4 +1,5 @@
 const FALLBACK_SYMBOLS = ['AAPL', 'MSFT', 'NVDA']
+const PORTFOLIO_EVENT = 'investment-terminal-portfolio-change'
 
 function storageKey(userId) {
   return `investment-terminal-portfolio:${userId}`
@@ -20,4 +21,21 @@ export function loadPortfolioSymbols(userId) {
 export function savePortfolioSymbols(userId, symbols) {
   if (!userId || typeof window === 'undefined') return
   window.localStorage.setItem(storageKey(userId), JSON.stringify(symbols))
+  window.dispatchEvent(new CustomEvent(PORTFOLIO_EVENT, { detail: { userId, symbols } }))
+}
+
+export function subscribePortfolioSymbols(onChange) {
+  if (typeof window === 'undefined') return () => {}
+
+  function handleChange() {
+    onChange()
+  }
+
+  window.addEventListener(PORTFOLIO_EVENT, handleChange)
+  window.addEventListener('storage', handleChange)
+
+  return () => {
+    window.removeEventListener(PORTFOLIO_EVENT, handleChange)
+    window.removeEventListener('storage', handleChange)
+  }
 }

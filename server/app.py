@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -11,6 +12,8 @@ import yfinance as yf
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PORT = int(os.getenv("PORT", "8787"))
+DETAILS_CACHE_TTL_SECONDS = 900
+DETAILS_CACHE: dict[str, dict] = {}
 
 
 def load_env_file(filename: Path) -> None:
@@ -190,23 +193,29 @@ def search_symbols(query: str) -> list[dict]:
 
 def fetch_ticker_details(symbol: str) -> dict:
     ticker = yf.Ticker(symbol)
-    info = ticker.fast_info or {}
-    meta = ticker.info or {}
-    history = ticker.history(period="1mo", interval="1d")
-    news_items = getattr(ticker, "news", []) or []
+    cached = DETAILS_CACHE.get(symbol)
+    if cached and (time.time() - cached["ts"]) < DETAILS_CACHE_TTL_SECONDS:
+        return cached["data"]
+
+    info = _safe_fast_info(ticker)
+    meta = _safe_info(ticker)
+    history = _safe_history(ticker)
+    news_items = _safe_news(ticker)
 
     price = _number(info.get("lastPrice")) or _number(meta.get("currentPrice")) or _number(meta.get("regularMarketPrice")) or 0.0
     previous_close = _number(info.get("previousClose")) or _number(meta.get("previousClose")) or price or 0.0
     change = price - previous_close
     percent = (change / previous_close * 100) if previous_close else 0.0
 
-    history_points = [
-        {
-            "date": index.strftime("%Y-%m-%d"),
-            "close": _number(row.get("Close")) or 0.0,
-        }
-        for index, row in history.iterrows()
-    ]
+    history_points = []
+    if hasattr(history, "iterrows"):
+        history_points = [
+            {
+                "date": index.strftime("%Y-%m-%d"),
+                "close": _number(row.get("Close")) or 0.0,
+            }
+            for index, row in history.iterrows()
+        ]
 
     normalized_news = []
     for item in news_items[:8]:
@@ -221,7 +230,7 @@ def fetch_ticker_details(symbol: str) -> dict:
             }
         )
 
-    return {
+    detail = {
         "symbol": symbol,
         "name": meta.get("shortName") or meta.get("longName") or symbol,
         "exchange": meta.get("exchange") or meta.get("fullExchangeName"),
@@ -234,6 +243,36 @@ def fetch_ticker_details(symbol: str) -> dict:
         "history": history_points,
         "news": normalized_news,
     }
+    DETAILS_CACHE[symbol] = {"ts": time.time(), "data": detail}
+    return detail
+
+
+def _safe_fast_info(ticker: yf.Ticker) -> dict:
+    try:
+        return ticker.fast_info or {}
+    except Exception:
+        return {}
+
+
+def _safe_info(ticker: yf.Ticker) -> dict:
+    try:
+        return ticker.info or {}
+    except Exception:
+        return {}
+
+
+def _safe_history(ticker: yf.Ticker):
+    try:
+        return ticker.history(period="1mo", interval="1d")
+    except Exception:
+        return []
+
+
+def _safe_news(ticker: yf.Ticker) -> list[dict]:
+    try:
+        return getattr(ticker, "news", []) or []
+    except Exception:
+        return []
 
 
 def _number(value: object) -> float | None:
