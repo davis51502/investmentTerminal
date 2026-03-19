@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -14,6 +15,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 PORT = int(os.getenv("PORT", "8787"))
 DETAILS_CACHE_TTL_SECONDS = 900
 DETAILS_CACHE: dict[str, dict] = {}
+QUOTE_CACHE_TTL_SECONDS = 120
+QUOTE_CACHE: dict[str, dict] = {}
+WORKER_POOL = ThreadPoolExecutor(max_workers=8)
 
 
 def load_env_file(filename: Path) -> None:
@@ -88,7 +92,11 @@ class MarketHandler(BaseHTTPRequestHandler):
             try:
                 self._send_json(200, {"data": fetch_quotes(symbols)})
             except Exception as exc:  # pragma: no cover
-                self._send_json(502, {"error": "Unable to fetch Yahoo Finance quotes", "detail": str(exc)})
+                fallback = [cached_quote(symbol) for symbol in symbols if cached_quote(symbol)]
+                if fallback:
+                    self._send_json(200, {"data": fallback, "stale": True})
+                else:
+                    self._send_json(502, {"error": "Unable to fetch Yahoo Finance quotes", "detail": str(exc)})
             return
 
         if route == "/api/market/search":
@@ -112,7 +120,11 @@ class MarketHandler(BaseHTTPRequestHandler):
             try:
                 self._send_json(200, {"data": fetch_ticker_details(symbol)})
             except Exception as exc:  # pragma: no cover
-                self._send_json(502, {"error": "Unable to fetch Yahoo Finance ticker details", "detail": str(exc)})
+                fallback = DETAILS_CACHE.get(symbol)
+                if fallback:
+                    self._send_json(200, {"data": fallback["data"], "stale": True})
+                else:
+                    self._send_json(502, {"error": "Unable to fetch Yahoo Finance ticker details", "detail": str(exc)})
             return
 
         self._send_json(404, {"error": "Not found"})
@@ -136,35 +148,12 @@ class MarketHandler(BaseHTTPRequestHandler):
 
 
 def fetch_quotes(symbols: list[str]) -> list[dict]:
-    tickers = yf.Tickers(" ".join(symbols))
     quotes: list[dict] = []
 
     for symbol in symbols:
-        ticker = tickers.tickers.get(symbol) or yf.Ticker(symbol)
-        info = ticker.fast_info or {}
-        meta = ticker.info or {}
-
-        price = _number(info.get("lastPrice")) or _number(meta.get("currentPrice")) or _number(meta.get("regularMarketPrice"))
-        previous_close = _number(info.get("previousClose")) or _number(meta.get("previousClose")) or price or 0.0
-        if price is None:
-            continue
-
-        change = price - previous_close
-        percent = (change / previous_close * 100) if previous_close else 0.0
-
-        quotes.append(
-            {
-                "symbol": symbol,
-                "name": meta.get("shortName") or meta.get("longName") or symbol,
-                "exchange": meta.get("exchange") or meta.get("fullExchangeName"),
-                "price": price,
-                "previousClose": previous_close,
-                "change": change,
-                "percent": percent,
-                "currency": meta.get("currency") or "USD",
-                "isMarketOpen": None,
-            }
-        )
+        quote = _fetch_quote_with_timeout(symbol)
+        if quote:
+            quotes.append(quote)
 
     return quotes
 
@@ -192,11 +181,22 @@ def search_symbols(query: str) -> list[dict]:
 
 
 def fetch_ticker_details(symbol: str) -> dict:
-    ticker = yf.Ticker(symbol)
     cached = DETAILS_CACHE.get(symbol)
     if cached and (time.time() - cached["ts"]) < DETAILS_CACHE_TTL_SECONDS:
         return cached["data"]
 
+    future = WORKER_POOL.submit(_build_ticker_details, symbol)
+    try:
+        detail = future.result(timeout=6)
+    except FutureTimeoutError as exc:
+        raise TimeoutError("Ticker details timed out") from exc
+
+    DETAILS_CACHE[symbol] = {"ts": time.time(), "data": detail}
+    return detail
+
+
+def _build_ticker_details(symbol: str) -> dict:
+    ticker = yf.Ticker(symbol)
     info = _safe_fast_info(ticker)
     meta = _safe_info(ticker)
     history = _safe_history(ticker)
@@ -230,7 +230,7 @@ def fetch_ticker_details(symbol: str) -> dict:
             }
         )
 
-    detail = {
+    return {
         "symbol": symbol,
         "name": meta.get("shortName") or meta.get("longName") or symbol,
         "exchange": meta.get("exchange") or meta.get("fullExchangeName"),
@@ -243,8 +243,53 @@ def fetch_ticker_details(symbol: str) -> dict:
         "history": history_points,
         "news": normalized_news,
     }
-    DETAILS_CACHE[symbol] = {"ts": time.time(), "data": detail}
-    return detail
+
+
+def _fetch_quote_with_timeout(symbol: str) -> dict | None:
+    future = WORKER_POOL.submit(_build_quote, symbol)
+    try:
+        return future.result(timeout=4)
+    except FutureTimeoutError:
+        return cached_quote(symbol)
+    except Exception:
+        return cached_quote(symbol)
+
+
+def _build_quote(symbol: str) -> dict | None:
+    ticker = yf.Ticker(symbol)
+    info = _safe_fast_info(ticker)
+    meta = _safe_info(ticker)
+
+    price = _number(info.get("lastPrice")) or _number(meta.get("currentPrice")) or _number(meta.get("regularMarketPrice"))
+    previous_close = _number(info.get("previousClose")) or _number(meta.get("previousClose")) or price or 0.0
+    if price is None:
+        return None
+
+    change = price - previous_close
+    percent = (change / previous_close * 100) if previous_close else 0.0
+
+    quote = {
+        "symbol": symbol,
+        "name": meta.get("shortName") or meta.get("longName") or symbol,
+        "exchange": meta.get("exchange") or meta.get("fullExchangeName"),
+        "price": price,
+        "previousClose": previous_close,
+        "change": change,
+        "percent": percent,
+        "currency": meta.get("currency") or "USD",
+        "isMarketOpen": None,
+    }
+    QUOTE_CACHE[symbol] = {"ts": time.time(), "data": quote}
+    return quote
+
+
+def cached_quote(symbol: str) -> dict | None:
+    cached = QUOTE_CACHE.get(symbol)
+    if not cached:
+        return None
+    if (time.time() - cached["ts"]) > DETAILS_CACHE_TTL_SECONDS:
+        return None
+    return cached["data"]
 
 
 def _safe_fast_info(ticker: yf.Ticker) -> dict:
