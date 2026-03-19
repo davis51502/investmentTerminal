@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { apiUrl } from './api.js'
 
 export function createSupabaseClient(supabaseUrl, supabaseAnonKey) {
   if (!supabaseUrl || !supabaseAnonKey) return null
@@ -12,7 +13,7 @@ export function createSupabaseClient(supabaseUrl, supabaseAnonKey) {
 }
 
 export async function fetchSupabaseConfig() {
-  const response = await fetch('/api/config')
+  const response = await fetch(apiUrl('/api/config'))
   if (!response.ok) {
     return { url: '', anonKey: '', configured: false }
   }

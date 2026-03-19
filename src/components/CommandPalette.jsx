@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import routes from '../data/searchIndex.js'
+import { apiUrl } from '../lib/api.js'
 
 function scoreItem(item, query) {
   const haystack = `${item.label} ${item.description || ''} ${item.symbol || ''} ${item.exchange || ''}`.toLowerCase()
@@ -35,7 +36,7 @@ function CommandPalette({ open, onClose }) {
 
     const controller = new AbortController()
 
-    fetch(`/api/market/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal })
+    fetch(apiUrl(`/api/market/search?q=${encodeURIComponent(trimmed)}`), { signal: controller.signal })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Search failed')))
       .then((payload) => {
         setMarketResults(

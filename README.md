@@ -27,6 +27,7 @@ Copy [.env.example](/Users/daviswollesen/Desktop/School/currentSemester/Winter20
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_API_BASE_URL`
 
 ## Supabase
 
@@ -35,3 +36,13 @@ Run the SQL in [supabase/schema.sql](/Users/daviswollesen/Desktop/School/current
 ## Yahoo Finance note
 
 This setup now uses `yfinance`, which wraps Yahoo Finance data. That is fine for an investment dashboard, but it is not exchange-grade real-time market data and can be delayed depending on the symbol and exchange.
+
+## Deploy
+
+Frontend:
+- Deploy to Vercel
+- Set `VITE_API_BASE_URL` to your Render backend URL
+
+Backend:
+- Deploy to Render using [render.yaml](/Users/daviswollesen/Desktop/School/currentSemester/Winter2026/cs356/investmentTerminal/render.yaml)
+- Render will install `requirements.txt` and run `python server/app.py`

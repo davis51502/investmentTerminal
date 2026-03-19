@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { apiUrl } from './api.js'
 
 const DEFAULT_BASE = {
   AAPL: 192.3,
@@ -66,7 +67,7 @@ export default function useRealtimePrices(symbols = []) {
 
     async function fetchQuotes() {
       try {
-        const response = await fetch(`/api/market/quotes?symbols=${encodeURIComponent(symbols.join(','))}`)
+        const response = await fetch(apiUrl(`/api/market/quotes?symbols=${encodeURIComponent(symbols.join(','))}`))
         if (!response.ok) {
           setLiveMode(false)
           return
