@@ -4,24 +4,23 @@ import { useAuth } from '../context/AuthContext.jsx'
 function Header() {
   const { user, profile, signOut } = useAuth()
   const linkClass = ({ isActive }) =>
-    `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-      isActive ? 'text-white bg-white/20' : 'text-slate-200 hover:text-white hover:bg-white/10'
+    `rounded-full px-3 py-1.5 text-sm transition-colors ${
+      isActive ? 'text-white bg-white/10' : 'text-slate-400 hover:text-white'
     }`
 
   return (
-    <header className="sticky top-0 z-50 bg-white/10 backdrop-blur supports-[backdrop-filter]:bg-white/10 border-b border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="text-base font-semibold tracking-wide text-white">Investment Terminal</div>
-          <button
-            type="button"
-            className="hidden rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300 md:block"
-          >
-            Press `/` to search
-          </button>
+    <header className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(7,10,18,0.78)] backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-5">
+          <div>
+            <div className="header-wordmark text-white">Investment Terminal</div>
+            <div className="mt-0.5 text-[10px] uppercase tracking-[0.28em] text-slate-500">Private Market Desk</div>
+          </div>
+          <div className="hidden h-8 w-px bg-white/8 lg:block" />
+          <div className="hidden text-xs text-slate-500 lg:block">Press `/` to search</div>
         </div>
-        <div className="flex items-center gap-4">
-          <nav className="flex items-center gap-1">
+        <div className="flex items-center gap-5">
+          <nav className="flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] p-1">
             <NavLink to="/" end className={linkClass}>
               Home
             </NavLink>
@@ -36,21 +35,21 @@ function Header() {
             </NavLink>
           </nav>
           {user ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <div className="hidden text-right md:block">
-                <div className="text-sm font-medium text-white">{profile?.username || user.email}</div>
-                <div className="text-xs text-slate-400">{profile?.favorite_ticker || 'No favorite ticker set'}</div>
+                <div className="text-sm text-white">{profile?.username || user.email}</div>
+                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{profile?.favorite_ticker || 'No favorite ticker set'}</div>
               </div>
               <button
                 type="button"
                 onClick={signOut}
-                className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/10"
+                className="rounded-full border border-white/8 px-3 py-1.5 text-sm text-slate-300 transition hover:border-white/15 hover:text-white"
               >
                 Sign out
               </button>
             </div>
           ) : (
-            <NavLink to="/auth" className={linkClass}>
+            <NavLink to="/auth" className="rounded-full border border-white/8 px-4 py-1.5 text-sm text-slate-300 transition hover:border-white/15 hover:text-white">
               Login
             </NavLink>
           )}
