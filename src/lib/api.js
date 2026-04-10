@@ -4,6 +4,10 @@ const apiBaseUrl =
   ''
 
 export function apiUrl(path) {
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')) {
+    return path
+  }
+
   if (!apiBaseUrl) return path
   return `${apiBaseUrl.replace(/\/$/, '')}${path}`
 }
