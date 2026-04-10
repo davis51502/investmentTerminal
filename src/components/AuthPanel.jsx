@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 
 function AuthPanel() {
-  const { signIn, signUp, error, hasSupabaseConfig } = useAuth()
+  const { signIn, signUp, error, hasSupabaseConfig, loading } = useAuth()
   const [mode, setMode] = useState('signin')
   const [form, setForm] = useState({
     email: '',
@@ -48,7 +48,7 @@ function AuthPanel() {
         </p>
       </div>
 
-      {!hasSupabaseConfig && (
+      {!loading && !hasSupabaseConfig && (
         <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
           Missing `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`.
         </div>
