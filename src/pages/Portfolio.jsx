@@ -1,9 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import SymbolSearchInput from '../components/SymbolSearchInput.jsx'
 import TickerDetailPanel from '../components/TickerDetailPanel.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import usePortfolioSymbols from '../lib/usePortfolioSymbols.js'
 import useRealtimePrices from '../lib/useRealtimePrices.js'
+
+const QUICK_PICKS = [
+  { symbol: 'AAPL', name: 'Apple' },
+  { symbol: 'MSFT', name: 'Microsoft' },
+  { symbol: 'NVDA', name: 'NVIDIA' },
+  { symbol: 'AMZN', name: 'Amazon' },
+  { symbol: 'GOOGL', name: 'Alphabet' },
+  { symbol: 'META', name: 'Meta' },
+]
 
 function PortfolioWorkspace({ user, profile }) {
   const [symbols, setSymbols] = usePortfolioSymbols(user.id)
@@ -16,6 +26,13 @@ function PortfolioWorkspace({ user, profile }) {
   function handleAddSymbol(event) {
     event.preventDefault()
     const next = draftSymbol.trim().toUpperCase()
+    if (!next || symbols.includes(next)) return
+    setSymbols((prev) => [...prev, next])
+    setDraftSymbol('')
+  }
+
+  function handleSelectResult(result) {
+    const next = result.symbol?.trim()?.toUpperCase()
     if (!next || symbols.includes(next)) return
     setSymbols((prev) => [...prev, next])
     setDraftSymbol('')
@@ -46,19 +63,41 @@ function PortfolioWorkspace({ user, profile }) {
       <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
         <div className="space-y-5">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h2 className="text-lg font-semibold text-white">Add a symbol</h2>
-            <p className="mt-2 text-sm text-slate-300">Portfolio symbols are currently stored per signed-in user in the browser on this device.</p>
-            <form onSubmit={handleAddSymbol} className="mt-4 flex gap-2">
-              <input
+            <h2 className="text-lg font-semibold text-white">Add companies without memorizing tickers</h2>
+            <p className="mt-2 text-sm text-slate-300">Search by company name or ticker, then add the result directly from the list.</p>
+            <form onSubmit={handleAddSymbol} className="mt-4 space-y-4">
+              <SymbolSearchInput
                 value={draftSymbol}
-                onChange={(event) => setDraftSymbol(event.target.value)}
-                placeholder="AAPL"
-                className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-white outline-none"
+                onChange={setDraftSymbol}
+                onSelect={handleSelectResult}
+                existingSymbols={symbols}
+                placeholder="Tesla, Apple, NVIDIA, SPY..."
               />
-              <button type="submit" className="rounded-xl bg-emerald-400 px-4 py-2 font-medium text-slate-950">
-                Add
-              </button>
+              <div className="flex gap-2">
+                <button type="submit" className="rounded-xl bg-emerald-400 px-4 py-2 font-medium text-slate-950">
+                  Add typed symbol
+                </button>
+              </div>
             </form>
+            <div className="mt-6">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Quick picks</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {QUICK_PICKS.map((item) => {
+                  const alreadyAdded = symbols.includes(item.symbol)
+                  return (
+                    <button
+                      key={item.symbol}
+                      type="button"
+                      onClick={() => handleSelectResult(item)}
+                      disabled={alreadyAdded}
+                      className="rounded-full border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-slate-200 transition hover:border-emerald-400/30 hover:text-white disabled:opacity-40"
+                    >
+                      {item.name} <span className="text-slate-500">{item.symbol}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-5">
