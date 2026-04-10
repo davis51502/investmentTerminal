@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 function AuthPanel() {
-  const { signIn, signUp, error, hasSupabaseConfig, loading } = useAuth()
+  const navigate = useNavigate()
+  const { signIn, signUp, error, hasSupabaseConfig, loading, user } = useAuth()
   const [mode, setMode] = useState('signin')
   const [form, setForm] = useState({
     email: '',
@@ -12,6 +15,12 @@ function AuthPanel() {
   })
   const [status, setStatus] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      navigate('/portfolio', { replace: true })
+    }
+  }, [navigate, user])
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -30,7 +39,10 @@ function AuthPanel() {
     if (result.error) {
       setStatus(result.error)
     } else {
-      setStatus(mode === 'signin' ? 'Signed in.' : 'Account created. Check email if confirmation is enabled.')
+      setStatus(mode === 'signin' ? 'Signed in. Redirecting...' : 'Account created. Redirecting...')
+      if (result.redirectTo) {
+        navigate(result.redirectTo, { replace: true })
+      }
     }
 
     setSubmitting(false)

@@ -92,7 +92,7 @@ export function AuthProvider({ children }) {
       return { error: signInError.message }
     }
 
-    return { error: null }
+    return { error: null, redirectTo: '/portfolio' }
   }
 
   async function signUp({ email, password, username, fullName }) {
@@ -117,6 +117,22 @@ export function AuthProvider({ children }) {
       return { error: signUpError.message }
     }
 
+    if (!data.session) {
+      const { error: autoSignInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (autoSignInError) {
+        const message = autoSignInError.message?.toLowerCase?.().includes('confirm')
+          ? 'Account created, but email confirmation is still required. Disable email confirmation in Supabase for faster UI testing.'
+          : autoSignInError.message
+
+        setError(message)
+        return { error: message }
+      }
+    }
+
     const userId = data.user?.id
     if (userId) {
       await upsertProfile({
@@ -127,7 +143,7 @@ export function AuthProvider({ children }) {
       })
     }
 
-    return { error: null }
+    return { error: null, redirectTo: '/portfolio' }
   }
 
   async function upsertProfile(nextProfile) {
