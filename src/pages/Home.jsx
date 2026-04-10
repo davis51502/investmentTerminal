@@ -5,42 +5,42 @@ function Home() {
   const { user, profile } = useAuth()
 
   return (
-    <section className="space-y-6">
-      <div className="terminal-panel rounded-[2rem] border border-white/10 p-8 shadow-[0_30px_120px_rgba(0,0,0,0.45)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-emerald-300/80">Terminal</p>
-        <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-white">
-          A sharper investment cockpit with live symbols, move context, and research hooks.
+    <section className="space-y-10">
+      <div className="mx-auto max-w-4xl py-10">
+        <p className="text-[11px] uppercase tracking-[0.34em] text-slate-500">Investment Terminal</p>
+        <h1 className="mt-4 max-w-3xl text-5xl font-semibold tracking-tight text-white sm:text-6xl">
+          Markets, watchlists, and company discovery without the noise.
         </h1>
-        <p className="mt-4 max-w-2xl text-slate-300">
-          Use `/` from anywhere to jump to pages or search for a ticker/company. Click into any tracked name to inspect price action and recent headlines around the move.
+        <p className="mt-6 max-w-2xl text-base leading-7 text-slate-400">
+          Search by company name, build a clean personal slate, and open ticker detail panels with price context and recent headlines when you need them.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="/markets" className="rounded-xl bg-emerald-400 px-4 py-2.5 font-medium text-slate-950">
-            Open Markets
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link to="/portfolio" className="rounded-full bg-white px-5 py-2.5 text-sm font-medium text-slate-950">
+            Start building
           </Link>
-          <Link to="/portfolio" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-medium text-slate-100">
-            Build Portfolio
+          <Link to="/markets" className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-medium text-slate-200">
+            Browse markets
           </Link>
-          <Link to={user ? '/settings' : '/auth'} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-medium text-slate-100">
-            {user ? 'Edit Profile' : 'Sign In'}
+          <Link to={user ? '/settings' : '/auth'} className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-medium text-slate-200">
+            {user ? 'Profile' : 'Sign in'}
           </Link>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h2 className="text-lg font-semibold text-white">Market data</h2>
-          <p className="mt-2 text-sm text-slate-300">Backend-proxied Yahoo quotes keep the browser thin and let you add ticker-level context like headlines and history.</p>
+        <article className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Search</div>
+          <p className="mt-3 text-sm leading-6 text-slate-300">Look up companies by name and add them directly from results instead of memorizing ticker symbols.</p>
         </article>
-        <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h2 className="text-lg font-semibold text-white">Profiles</h2>
-          <p className="mt-2 text-sm text-slate-300">
-            {user ? `Logged in as ${profile?.username || user.email}.` : 'Supabase auth and profiles are ready to connect.'}
+        <article className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Track</div>
+          <p className="mt-3 text-sm leading-6 text-slate-300">Keep a personal list of names you care about and let the app surface price movement in one place.</p>
+        </article>
+        <article className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Understand</div>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            Open a ticker to see the chart and recent headlines together, with {user ? `${profile?.username || user.email}` : 'your account'} keeping the experience personal.
           </p>
-        </article>
-        <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h2 className="text-lg font-semibold text-white">Ticker intelligence</h2>
-          <p className="mt-2 text-sm text-slate-300">Open a chart, then scan the linked company news next to the move instead of bouncing between tabs.</p>
         </article>
       </div>
     </section>
